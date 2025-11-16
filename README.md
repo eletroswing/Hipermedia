@@ -9,7 +9,11 @@ bun install
 To run:
 
 ```bash
-bun run index.ts
+bun run dev
 ```
 
-This project was created using `bun init` in bun v1.3.0. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+# About the project
+
+Hipermidia is a free distributed streaming server featuring an admin dashboard.
+
+Initially, it only process the stream to HLS(for optimized streaming) with segments of 2 seconds.
