@@ -1,0 +1,19 @@
+{
+  "name": "engine",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "http2-express": "^1.1.0",
+    "pino": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5"
+  },
+  "scripts": {
+    "dev": "bun --watch bin/index.ts",
+    "start": "bun bin/index.ts"
+  }
+}

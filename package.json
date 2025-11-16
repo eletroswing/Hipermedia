@@ -1,0 +1,20 @@
+{
+  "name": "hipermedia",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"bun run --cwd packages/engine dev\" \"bun run --cwd packages/web dev\"",
+    "dev:engine": "bun run --watch packages/engine/bin/index.ts",
+    "dev:web": "bun run --cwd packages/web dev"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "concurrently": "^9.2.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "pino-pretty": "^13.1.2"
+  }
+}
