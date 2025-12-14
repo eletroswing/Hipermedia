@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"bun run --cwd packages/engine dev\" \"bun run --cwd packages/web dev\"",
+    "dev": "concurrently \"bun run --cwd packages/engine dev\" \"bun run --cwd packages/api dev\"",
     "dev:engine": "bun run --watch packages/engine/bin/index.ts",
     "dev:web": "bun run --cwd packages/web dev"
   },
