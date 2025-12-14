@@ -1,13 +1,11 @@
-FROM oven/bun
+FROM oven/bun:1.2 AS build
+
+RUN apt-get update && apt-get install -y git ffmpeg libgcc-s1 libssl3 ca-certificates
 
 WORKDIR /app
 
-COPY bun.lockb package.json ./
-
-RUN bun install --frozen-lockfile
-
-COPY . .
-
-EXPOSE 3001
+COPY ./ ./
+RUN bun install 
 
 CMD ["bun", "run", "start"]
+EXPOSE 3001
