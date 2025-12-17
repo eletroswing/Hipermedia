@@ -2,18 +2,12 @@ import crypto from "node:crypto";
 import type { Socket } from "@/index"
 import { rtmp } from "./client"
 import { broadcast } from "@/lib/broadcast"
-import ffmpeg from "fluent-ffmpeg";
 import type { Request, Query } from "./client"
 import { broadcasts } from "@/utils/config"
 import { logger } from "@/utils/logger"
-import { TMP_DIR } from "@/integration/server";
-import path from "node:path"
-import fs from "node:fs"
 import type { AVPacket } from "@/utils/av_packet";
-
-ffmpeg.setFfmpegPath(
-  process.env.FFMPEG_PATH ?? "C:/Users/fountai/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/ffmpeg.exe"
-);
+import { redis } from "@/integration/redis"
+import { SERVER_ID } from "@/integration/server";
 
 type BaseSessionConfig = {
   id: string;
@@ -70,7 +64,6 @@ export const session = (sock: Socket) => {
   const socket: Socket = sock;
   let broadcastClient = broadcast();
   let isPublisher = false;
-  let transmuter: ffmpeg.FfmpegCommand | undefined = undefined
 
   const onConnect = (request: Request) => {
     streamApp = request.app;
@@ -103,50 +96,14 @@ export const session = (sock: Socket) => {
     });
   };
 
-  const startTransmuting = () => {
-    const outDir = path.join(TMP_DIR, streamName, id)
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true })
-
+  const startTransmuting = async () => {
     logger.info(`[RTMP Session] ${ip} Start Transmuxing`);
-
-    transmuter = ffmpeg(`rtmp://localhost:1935/${streamApp}/${streamName}`)
-      .outputOptions([
-        "-y",
-
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-r", "30",
-        "-g", "60",
-        "-keyint_min", "60",
-        "-sc_threshold", "0",
-        "-force_key_frames", "expr:gte(t,n_forced*2)",
-
-        "-c:a", "aac",
-        "-b:a", "128k",
-
-        "-map", "0:v",
-        "-map", "0:a?",
-
-        "-f", "hls",
-        "-hls_time", "2",
-        "-hls_list_size", "7",
-        "-hls_flags", "delete_segments+independent_segments",
-
-        "-hls_segment_filename", path.join(outDir, "segments_%03d.ts"),
-      ])
-      .output(path.join(outDir, "index.m3u8"))
-
-    transmuter.run()
-
+    await redis.setex(`hipermidia:server:${SERVER_ID}:stream:${streamApp}/${streamName}`, 60, "true")
   }
 
-  const stopTransmuting = () => {
-    if (transmuter) {
-      try {
-        transmuter.kill('SIGKILL');
-        transmuter = undefined
-      } catch (err) { }
-    }
+  const stopTransmuting = async () => {
+    logger.info(`[RTMP Session] ${ip} Stop Transmuxing`);
+    await redis.del(`hipermidia:server:${SERVER_ID}:stream:${streamApp}/${streamName}`)
   }
 
   const onError = (error: Error) => logger.info(`[RTMP Session] ${ip} socket error, ${error.name}: ${error.message}`);

@@ -2,7 +2,6 @@ import { logger } from "@/utils/logger"
 import { session } from "@/protocol/rtmp/session"
 import { SERVER_ID } from "@/integration/server";
 import "@/asynchronous/server_monitoring";
-import "@/asynchronous/uploader";
 
 type Body = {
   session: ReturnType<typeof session>
