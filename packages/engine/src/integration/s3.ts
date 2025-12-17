@@ -24,5 +24,5 @@ export async function uploadFile(path: string, name: string): Promise<string> {
     })
   );
 
-  return `http://localhost:9000/${bucketName}/${name}`;
+  return `${process.env.FILES_URL ?? "http://localhost:9000"}/${bucketName}/${name}`;
 }
