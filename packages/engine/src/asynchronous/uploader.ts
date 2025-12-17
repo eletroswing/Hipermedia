@@ -8,12 +8,13 @@ import { redis } from "@/integration/redis"
 const watcher = chokidar.watch(TMP_DIR, {
   persistent: true,
   ignoreInitial: true,
-  depth: Infinity,
+  usePolling: true,
+  interval: 100,
 });
 
 watcher.on("change", async (path) => {
   if (!path.endsWith("index.m3u8")) return
-
+  await new Promise(res => setTimeout(res, 50));
   let originalContent = fs.readFileSync(path).toString()
   const fileContent = fs.readFileSync(path).toString().split("\n").filter(line => line.startsWith("segments_"))
 
