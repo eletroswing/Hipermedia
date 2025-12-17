@@ -31,6 +31,7 @@ watcher.on("change", async (path) => {
     originalContent = originalContent.replaceAll(segment, uploaded)
     await redis.setex(`hipermidia:server:${SERVER_ID}:stream:${key}`, 60, originalContent)
 
+    /*
     // record the stream
     // get what already exists from the stream
     var recorded = await redis.get(`hipermidia:server:${SERVER_ID}:record:${key}`)
@@ -57,7 +58,7 @@ ${uploaded}
       //write the recording
       fs.writeFileSync(nodePath.join(path.replace("index.m3u8", ""), "recorded.m3u8"), recorded)
       await uploadFile(nodePath.join(path.replace("index.m3u8", ""), "recorded.m3u8"), `${key}/recorded.m3u8`)
-    }
+    }*/
 
   }
 });
