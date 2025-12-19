@@ -16,14 +16,8 @@ function getRtmpSessions() {
 	return Array.from(rtpmSessions).length;
 }
 
-function getHlsSessions() {
-	const sessions = Context.hlsSessions.values();
-	return Array.from(sessions).length;
-}
-
 export function getSessionInfo() {
 	return {
-		hls: getHlsSessions(),
 		flv: getFlvSessions(),
 		rtmp: getRtmpSessions(),
 	};

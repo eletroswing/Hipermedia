@@ -1,11 +1,18 @@
 import pino from "pino";
-import pretty from "pino-pretty";
 
 class Logger {
 	logger: pino.Logger<never, boolean>;
 
 	constructor() {
-		this.logger = pino(pretty());
+		this.logger = pino({}, {
+			write(msg) {
+				const pinoObject = JSON.parse(msg)
+				const logDate = new Date(pinoObject.time).toISOString()
+				const logMessage = pinoObject["0"]
+
+				process.stdout.write(`[${logDate}] ${logMessage} \n`)
+			}
+		});
 	}
 
 	trace(...args: unknown[]) {

@@ -57,11 +57,6 @@ export default class BroadcastServer {
 			Context.eventEmitter.emit("prePlay", session);
 		}
 
-		if (Context.config.auth?.play && session.ip !== "") {
-			if (!this.verifyAuth(Context.config.auth?.secret, session)) {
-				return `play stream ${session.streamPath} authentication verification failed`;
-			}
-		}
 		if (session.ip !== "") {
 			Context.eventEmitter.emit("postPlay", session);
 		}
@@ -114,12 +109,6 @@ export default class BroadcastServer {
 
 	postPublish = (session: BaseSession) => {
 		Context.eventEmitter.emit("prePublish", session);
-
-		if (Context.config.auth?.publish) {
-			if (!this.verifyAuth(Context.config.auth?.secret, session)) {
-				return `publish stream ${session.streamPath} authentication verification failed`;
-			}
-		}
 
 		Context.eventEmitter.emit("postPublish", session);
 		if (this.publisher == null) {

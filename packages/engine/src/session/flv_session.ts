@@ -5,15 +5,18 @@ import logger from "@/core/logger";
 import Flv from "@/protocol/flv";
 import type BroadcastServer from "@/server/broadcast_server";
 import BaseSession from "./base_session";
+import http from "node:http"
+import WebSocket from "ws"
+import url from "node:url"
 
 export default class FlvSession extends BaseSession {
-	req: Req;
-	res: Res;
+	req: Req | http.IncomingMessage;
+	res: Res | WebSocket;
 	flv: Flv;
 	isPublisher: boolean;
 	broadcast: BroadcastServer | undefined;
 
-	constructor(req: Req, res: Res) {
+	constructor(req: Req | http.IncomingMessage, res: Res | WebSocket) {
 		super();
 		this.req = req;
 		this.res = res;
@@ -22,25 +25,54 @@ export default class FlvSession extends BaseSession {
 		this.protocol = "flv";
 		this.isPublisher = false;
 
-		this.streamHost = req.hostname;
-		this.streamApp = req.params.app as string;
-		this.streamName = req.params.name as string;
-		this.streamPath = `/${this.streamApp}/${this.streamName}`;
-		this.streamQuery = req.query as { sign: string };
+		 if (this.res instanceof WebSocket) {
+			let localReq: { url: string} = req as {url: string} 
+
+      const urlInfo = url.parse(localReq.url, true);
+      this.streamHost = req.headers.host?.split(":")[0] as string;
+      this.streamPath = urlInfo.pathname!.split(".")[0] as string;
+      this.streamApp = this.streamPath.split("/")[1] as string;
+      this.streamName = this.streamPath.split("/")[2] as string;
+      this.streamQuery = urlInfo.query as {sign: string};
+      if (this.res.protocol.toLowerCase() === "post" || this.res.protocol.toLowerCase() === "publisher") {
+        this.isPublisher = true;
+      }
+    } else {
+			let localReq: {hostname: string, params: {app: string, name: string}, query: {sign: string}} = req as unknown as {hostname: string, params: {app: string, name: string}, query: {sign: string}}
+      this.streamHost = localReq.hostname;
+      this.streamApp = localReq.params.app;
+      this.streamName = localReq.params.name;
+			this.streamPath = `/${this.streamApp}/${this.streamName}`;
+      this.streamQuery = localReq.query 
+      if (this.req.method === "POST") {
+        this.isPublisher = true;
+      }
+    }
 
 		this.broadcast = Context.broadcasts.get(this.streamPath);
 
 		if (!this.broadcast) {
-			res.status(404);
-			res.socket?.end();
+		  if (this.res instanceof WebSocket) {
+				(this.res as WebSocket).close()
+				this.onClose();
+				return
+			} 
+			(res as unknown as Res).status(404);
+			(res as unknown as Res).socket?.end();
 			this.onClose();
 		}
 	}
 
 	run = () => {
-		this.req.on("data", this.onData);
-		this.req.on("error", this.onError);
-		this.req.socket.on("close", this.onClose);
+		if (this.res instanceof WebSocket) {
+      this.res.on("message", this.onData);
+      this.res.on("close", this.onClose);
+      this.res.on("error", this.onError);
+    } else {
+      this.req.on("data", this.onData);
+      this.req.on("error", this.onError);
+      this.req.socket.on("close", this.onClose);
+    }
 
 		if (this.isPublisher) {
 			this.onPush();
@@ -98,6 +130,8 @@ export default class FlvSession extends BaseSession {
 		} else {
 			this.broadcast?.donePlay(this);
 		}
+
+		Context.sessions.delete(this.id);
 	};
 
 	onError = (err: string) => {
