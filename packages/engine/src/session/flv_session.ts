@@ -3,9 +3,9 @@ import type AVPacket from "@/core/avpacket";
 import Context from "@/core/context";
 import logger from "@/core/logger";
 import Flv from "@/protocol/flv";
-import type BroadcastServer from "@/server/broadcast_server";
+import BroadcastServer from "@/server/broadcast_server";
 import BaseSession from "./base_session";
-import http from "node:http"
+import http, { ServerResponse } from "node:http"
 import WebSocket from "ws"
 import url from "node:url"
 
@@ -25,7 +25,7 @@ export default class FlvSession extends BaseSession {
 		this.protocol = "flv";
 		this.isPublisher = false;
 
-		 if (this.res instanceof WebSocket) {
+		if (!(this.res instanceof ServerResponse)) {
 			let localReq: { url: string} = req as {url: string} 
 
       const urlInfo = url.parse(localReq.url, true);
@@ -49,22 +49,11 @@ export default class FlvSession extends BaseSession {
       }
     }
 
-		this.broadcast = Context.broadcasts.get(this.streamPath);
-
-		if (!this.broadcast) {
-		  if (this.res instanceof WebSocket) {
-				(this.res as WebSocket).close()
-				this.onClose();
-				return
-			} 
-			(res as unknown as Res).status(404);
-			(res as unknown as Res).socket?.end();
-			this.onClose();
-		}
+		this.broadcast = Context.broadcasts.get(this.streamPath)
 	}
 
 	run = () => {
-		if (this.res instanceof WebSocket) {
+		if (!(this.res instanceof ServerResponse)) {
       this.res.on("message", this.onData);
       this.res.on("close", this.onClose);
       this.res.on("error", this.onError);
@@ -94,6 +83,21 @@ export default class FlvSession extends BaseSession {
 		logger.info(
 			`FLV session ${this.id} ${this.ip} start play ${this.streamPath}`,
 		);
+
+		//check if the broadcast exists
+		if(!this.broadcast) {
+			if (!this.broadcast) {
+				if (!(this.res instanceof ServerResponse)) {
+					(this.res as WebSocket).close()
+					this.onClose();
+					return
+				} 
+				(this.res as unknown as Res).status(404);
+				(this.res as unknown as Res).socket?.end();
+				this.onClose();
+				return
+			}
+		}
 	};
 
 	onPush = () => {
@@ -110,6 +114,9 @@ export default class FlvSession extends BaseSession {
 		logger.info(
 			`FLV session ${this.id} ${this.ip} start push ${this.streamPath}`,
 		);
+
+		this.broadcast = new BroadcastServer()
+		Context.broadcasts.set(this.streamPath, this.broadcast);
 	};
 
 	onData = (data: Buffer) => {
@@ -143,7 +150,7 @@ export default class FlvSession extends BaseSession {
 	};
 
 	override sendBuffer = (buffer: Buffer) => {
-		if (this.res instanceof WebSocket) {
+		if (!(this.res instanceof ServerResponse)) {
 			if (this.res.readyState !== WebSocket.OPEN) {
 				return;
 			}
@@ -158,7 +165,7 @@ export default class FlvSession extends BaseSession {
 	};
 
 	override close = () => {
-		if (this.res instanceof WebSocket) {
+		if (!(this.res instanceof ServerResponse)) {
 			this.res.close();
 		} else {
 			this.res.end();
