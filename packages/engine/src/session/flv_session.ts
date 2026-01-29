@@ -50,6 +50,10 @@ export default class FlvSession extends BaseSession {
     }
 
 		this.broadcast = Context.broadcasts.get(this.streamPath)
+		if(!this.broadcast) {
+			Context.broadcasts.set(this.streamPath, new BroadcastServer())
+			this.broadcast = Context.broadcasts.get(this.streamPath)
+		}
 	}
 
 	run = () => {

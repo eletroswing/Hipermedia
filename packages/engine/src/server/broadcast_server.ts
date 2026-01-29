@@ -120,7 +120,6 @@ export default class BroadcastServer {
 	};
 
 	donePublish = (session: BaseSession) => {
-		if (session === this.publisher) {
 			session.endTime = Date.now();
 			Context.eventEmitter.emit("donePublish", session);
 			this.publisher = null;
@@ -132,7 +131,6 @@ export default class BroadcastServer {
 			this.rtmpVideoHeader = null;
 			this.flvGopCache?.clear();
 			this.rtmpGopCache?.clear();
-		}
 	};
 
 	broadcastMessage = (packet: AVPacket) => {
