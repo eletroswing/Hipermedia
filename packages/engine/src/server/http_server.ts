@@ -7,6 +7,7 @@ import Context from "@/core/context";
 import logger from "@/core/logger";
 import FlvSession from "@/session/flv_session";
 import WebSocket, {WebSocketServer, type Server} from "ws"
+import path from "node:path";
 
 export default class NodeHttpServer {
 	httpServer:
@@ -17,6 +18,13 @@ export default class NodeHttpServer {
 		const app = express();
 		app.use(cors());
 		app.all("/:app/:name.flv", this.handleFlv);
+		
+		app.use("/public", express.static(path.join(__dirname, "../../public")));
+		app.get("/", (_req, res) => {
+			res.sendFile(path.join(__dirname, "../../public", "index.html"));
+			return
+		});
+
 		app.use("/api/sessions", SessionRoutes);
 		app.use("/api/server", ServerRoutes);
 
