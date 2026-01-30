@@ -111,7 +111,7 @@ export default class NodeHttpServer {
 		}
 
 		res.setHeader("Content-Type", "video/mp2t");
-		res.setHeader("Cache-Control", "max-age=3600");
+		res.setHeader("Cache-Control", "public, max-age=60");
 		res.setHeader("Access-Control-Allow-Origin", "*");
 
 		const stream = fs.createReadStream(segmentPath);

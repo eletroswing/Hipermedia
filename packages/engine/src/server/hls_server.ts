@@ -103,7 +103,8 @@ export default class HlsServer {
 	};
 
 	private cleanupOldSegments = () => {
-		const maxAge = 60000; // 60 seconds
+		// Only cleanup inactive streams - let FFmpeg manage active stream segments
+		const maxAge = 120000; // 2 minutes for inactive streams
 		const now = Date.now();
 
 		if (!fs.existsSync(HLS_ROOT)) return;
@@ -116,49 +117,30 @@ export default class HlsServer {
 
 			if (!fs.statSync(outputDir).isDirectory()) continue;
 
-			// If stream is not active, cleanup all files after a delay
-			if (!this.isStreamActive(streamPath)) {
-				const files = fs.readdirSync(outputDir);
-				let allOld = true;
-
-				for (const file of files) {
-					const filePath = path.join(outputDir, file);
-					const stat = fs.statSync(filePath);
-					if (now - stat.mtimeMs < maxAge * 2) {
-						allOld = false;
-						break;
-					}
-				}
-
-				if (allOld && files.length > 0) {
-					for (const file of files) {
-						fs.unlinkSync(path.join(outputDir, file));
-					}
-					fs.rmdirSync(outputDir);
-					logger.debug(`Cleaned up inactive HLS directory: ${outputDir}`);
-				}
+			// Only cleanup inactive streams - active streams managed by FFmpeg
+			if (this.isStreamActive(streamPath)) {
 				continue;
 			}
 
-			// For active streams, only cleanup old segments (keep last N)
+			// For inactive streams, cleanup after delay
 			const files = fs.readdirSync(outputDir);
-			const segments = files
-				.filter((f) => f.endsWith(".ts"))
-				.map((f) => ({
-					name: f,
-					path: path.join(outputDir, f),
-					mtime: fs.statSync(path.join(outputDir, f)).mtimeMs,
-				}))
-				.sort((a, b) => a.mtime - b.mtime);
+			let allOld = true;
 
-			// Keep at least 5 segments for active streams
-			const toDelete = segments.slice(0, Math.max(0, segments.length - 10));
-
-			for (const segment of toDelete) {
-				if (now - segment.mtime > maxAge) {
-					fs.unlinkSync(segment.path);
-					logger.debug(`Deleted old HLS segment: ${segment.name}`);
+			for (const file of files) {
+				const filePath = path.join(outputDir, file);
+				const stat = fs.statSync(filePath);
+				if (now - stat.mtimeMs < maxAge) {
+					allOld = false;
+					break;
 				}
+			}
+
+			if (allOld && files.length > 0) {
+				for (const file of files) {
+					fs.unlinkSync(path.join(outputDir, file));
+				}
+				fs.rmdirSync(outputDir);
+				logger.debug(`Cleaned up inactive HLS directory: ${outputDir}`);
 			}
 		}
 	};

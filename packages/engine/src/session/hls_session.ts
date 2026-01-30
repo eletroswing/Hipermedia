@@ -18,8 +18,8 @@ export default class HlsSession {
 		if (this.isRunning) return;
 		this.isRunning = true;
 
-		// Small delay to ensure FLV stream is ready
-		setTimeout(() => this.startFfmpeg(), 500);
+		// Small delay to ensure FLV stream is ready (reduced for faster startup)
+		setTimeout(() => this.startFfmpeg(), 100);
 	};
 
 	private startFfmpeg = () => {
@@ -39,22 +39,37 @@ export default class HlsSession {
 			"-hide_banner",
 			"-loglevel",
 			"warning",
+			// Input options
+			"-fflags",
+			"+genpts+discardcorrupt",
 			"-i",
 			flvUrl,
+			// Video: copy (no re-encode)
 			"-c:v",
 			"copy",
+			// Audio: AAC for HLS compatibility
 			"-c:a",
 			"aac",
 			"-b:a",
 			"128k",
+			"-ar",
+			"44100",
+			// Timestamp handling
+			"-copyts",
+			"-start_at_zero",
+			// HLS output
 			"-f",
 			"hls",
 			"-hls_time",
-			"2",
+			"4",
 			"-hls_list_size",
-			"5",
+			"10",
 			"-hls_flags",
-			"delete_segments+append_list",
+			"append_list+omit_endlist+independent_segments",
+			"-hls_segment_type",
+			"mpegts",
+			"-hls_start_number_source",
+			"epoch",
 			"-hls_segment_filename",
 			segmentPath,
 			playlistPath,
