@@ -102,6 +102,10 @@ export default class HlsServer {
 		return this.hlsSessions.has(streamPath);
 	};
 
+	getActiveStreamPaths = (): string[] => {
+		return Array.from(this.hlsSessions.keys());
+	};
+
 	private cleanupOldSegments = () => {
 		// Only cleanup inactive streams - let FFmpeg manage active stream segments
 		const maxAge = 120000; // 2 minutes for inactive streams

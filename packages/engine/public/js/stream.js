@@ -24,6 +24,12 @@ async function createFfmpegInstance() {
 
 const getStream = () => window.streamPage.stream 
 
+const getStreamKeyFromQuery = () => {
+    const params = new URLSearchParams(window.location.search);
+    const streamKey = params.get("stream_key");
+    return streamKey ? streamKey.trim() : "test_av1";
+}
+
 //start and stop recording
 document.addEventListener("DOMContentLoaded", async () => {
     const stremButton = document.getElementById("stream-btn");
@@ -226,7 +232,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     stremButton.addEventListener("click", async () => {
         globals.streaming = window.streamPage.isStreaming
         if (globals.streaming) {
-            globals.ws = new WebSocket("wss://api.stream.founderz.life/live/test_av1.flv", "POST");//new WebSocket("ws://localhost:8000/live/test_av1.flv", "POST"); //
+            const streamKey = getStreamKeyFromQuery();
+            globals.ws = new WebSocket(`wss://api.stream.founderz.life/live/${encodeURIComponent(streamKey)}.flv`, "POST");//new WebSocket(`wss://api.stream.founderz.life/live/${encodeURIComponent(streamKey)}.flv`, "POST");//new WebSocket("ws://localhost:8000/live/test_av1.flv", "POST"); //
             globals.ws.binaryType = "arraybuffer";
             globals.chunk = {
                 order: 0,

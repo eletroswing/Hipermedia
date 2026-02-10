@@ -33,10 +33,7 @@ export default class NodeHttpServer {
 			res.sendFile(path.join(__dirname, "../../public", "index.html"));
 			return
 		});
-		app.get("/:someapp", (_req, res) => {
-			res.sendFile(path.join(__dirname, "../../public", "index.html"));
-			return
-		});
+		app.get("/active-streams", this.handleActiveStreams);
 		app.use("/api/sessions", SessionRoutes);
 		app.use("/api/server", ServerRoutes);
 
@@ -116,5 +113,23 @@ export default class NodeHttpServer {
 
 		const stream = fs.createReadStream(segmentPath);
 		stream.pipe(res);
+	};
+
+	handleActiveStreams = (req: Req, res: Res) => {
+		const host = req.get("host") ?? `${Context.config.bind ?? "127.0.0.1"}:${Context.config.http?.port ?? 8000}`;
+		const activeStreams = this.hlsServer.getActiveStreamPaths().reduce(
+			(acc, streamPath) => {
+				const [, app, streamKey] = streamPath.split("/");
+				if (!app || !streamKey) {
+					return acc;
+				}
+
+				acc[streamKey] = `${req.protocol}://${host}/live/${app}/${encodeURIComponent(streamKey)}/index.m3u8`;
+				return acc;
+			},
+			{} as Record<string, string>,
+		);
+
+		res.json(activeStreams);
 	};
 }
