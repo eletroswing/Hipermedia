@@ -124,7 +124,7 @@ export default class NodeHttpServer {
 					return acc;
 				}
 
-				acc[streamKey] = `${req.protocol}://${host}/live/${app}/${encodeURIComponent(streamKey)}/index.m3u8`;
+				acc[streamKey] = `https://${host}/live/${app}/${encodeURIComponent(streamKey)}/index.m3u8`;
 				return acc;
 			},
 			{} as Record<string, string>,
