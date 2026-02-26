@@ -5,6 +5,23 @@ class StreamPage {
   constructor(streamId) {
     this.streamId = streamId;
 
+    this.fallbackTranslations = {
+      "loading": "CARREGANDO...",
+      "permission.title": "ACESSO A CAMERA",
+      "permission.description": "Permita o acesso a camera e microfone para continuar",
+      "permission.allow": "PERMITIR",
+      "live.badge": "AO VIVO",
+      "settings.camera": "CAMERA",
+      "settings.microphone": "MICROFONE",
+      "actions.retry": "TENTAR NOVAMENTE",
+      "stream.start": "INICIAR STREAM",
+      "stream.stop": "PARAR",
+      "errors.permissionDenied": "Permissao negada",
+      "errors.cameraError": "Erro na camera",
+      "devices.camera": "Camera {index}",
+      "devices.microphone": "Microfone {index}",
+    };
+
     // Device states
     this.cameras = [];
     this.microphones = [];
@@ -91,6 +108,28 @@ class StreamPage {
     });
   }
 
+  interpolate(text, params = {}) {
+    return String(text).replace(/\{(\w+)\}/g, (_, key) =>
+      Object.prototype.hasOwnProperty.call(params, key)
+        ? String(params[key])
+        : `{${key}}`
+    );
+  }
+
+  t(key, params = {}) {
+    const i18n = window.i18n;
+    const locale = i18n?.locale;
+    const dict = i18n?.dict;
+
+    const template =
+      (locale && dict?.[locale]?.[key]) ||
+      dict?.pt?.[key] ||
+      this.fallbackTranslations[key] ||
+      key;
+
+    return this.interpolate(template, params);
+  }
+
   async initializeDevices() {
     this.isLoading = true;
     this.error = null;
@@ -111,14 +150,15 @@ class StreamPage {
         .filter((device) => device.kind === "videoinput")
         .map((device, index) => ({
           deviceId: device.deviceId,
-          label: device.label || `Câmera ${index + 1}`,
+          label: device.label || this.t("devices.camera", { index: index + 1 }),
         }));
 
       this.microphones = devices
         .filter((device) => device.kind === "audioinput")
         .map((device, index) => ({
           deviceId: device.deviceId,
-          label: device.label || `Microfone ${index + 1}`,
+          label:
+            device.label || this.t("devices.microphone", { index: index + 1 }),
         }));
 
       if (this.cameras.length > 0) {
@@ -140,7 +180,7 @@ class StreamPage {
       await this.startPreview();
     } catch (err) {
       console.error("Error accessing media devices:", err);
-      this.error = "Permissão negada";
+      this.error = this.t("errors.permissionDenied");
       this.hasPermission = false;
     } finally {
       this.isLoading = false;
@@ -200,7 +240,7 @@ class StreamPage {
       }
     } catch (err) {
       console.error("Error starting preview:", err);
-      this.error = "Erro na câmera";
+      this.error = this.t("errors.cameraError");
       this.updateUI();
     }
   }
@@ -318,7 +358,7 @@ class StreamPage {
           "flex-1 h-14 flex items-center justify-center gap-3 border-2 font-mono text-sm font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed bg-red-500 border-red-500 text-white hover:bg-red-600";
         this.elements.streamBtn.innerHTML = `
           <div class="w-4 h-4 bg-white"></div>
-          <span>PARAR</span>
+          <span>${this.t("stream.stop")}</span>
         `;
       } else {
         this.elements.streamBtn.className =
@@ -327,7 +367,7 @@ class StreamPage {
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z" />
           </svg>
-          <span>INICIAR STREAM</span>
+          <span>${this.t("stream.start")}</span>
         `;
       }
     }
@@ -359,7 +399,7 @@ class StreamPage {
           <div id="loading-state" class="w-full h-full flex items-center justify-center bg-black">
             <div class="flex flex-col items-center gap-4">
               <div class="w-16 h-16 border-4 border-[#CCFF00] border-t-transparent animate-spin"></div>
-              <span class="font-mono text-sm text-white/60">CARREGANDO...</span>
+              <span class="font-mono text-sm text-white/60">${this.t("loading")}</span>
             </div>
           </div>
 
@@ -372,11 +412,11 @@ class StreamPage {
                 </svg>
               </div>
               <div>
-                <p class="font-mono text-lg text-white mb-2">ACESSO À CÂMERA</p>
-                <p class="font-mono text-xs text-white/50 max-w-xs">Permita o acesso à câmera e microfone para continuar</p>
+                <p class="font-mono text-lg text-white mb-2">${this.t("permission.title")}</p>
+                <p class="font-mono text-xs text-white/50 max-w-xs">${this.t("permission.description")}</p>
               </div>
               <button id="allow-btn" class="font-mono text-sm bg-[#CCFF00] text-black px-8 py-4 border-4 border-[#CCFF00] hover:bg-transparent hover:text-[#CCFF00] transition-all cursor-pointer">
-                PERMITIR
+                ${this.t("permission.allow")}
               </button>
             </div>
           </div>
@@ -389,7 +429,7 @@ class StreamPage {
         <div id="live-badge" class="absolute top-4 right-4 z-20" style="display: none; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);">
           <div class="flex items-center gap-2 bg-red-600 px-4 py-2 border-2 border-red-400">
             <span class="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></span>
-            <span class="font-mono text-sm text-white font-bold tracking-wider">AO VIVO</span>
+            <span class="font-mono text-sm text-white font-bold tracking-wider">${this.t("live.badge")}</span>
           </div>
         </div>
 
@@ -398,12 +438,12 @@ class StreamPage {
           <div class="glass-brutal-dark p-4 space-y-4">
             <!-- Camera Select -->
             <div>
-              <label class="block font-mono text-[10px] text-white/50 uppercase tracking-wider mb-2">CÂMERA</label>
+              <label class="block font-mono text-[10px] text-white/50 uppercase tracking-wider mb-2">${this.t("settings.camera")}</label>
               <select id="camera-select" class="w-full bg-white/10 border-2 border-white/20 text-white font-mono text-sm p-3 focus:outline-none focus:border-[#CCFF00] cursor-pointer appearance-none select-arrow"></select>
             </div>
             <!-- Microphone Select -->
             <div>
-              <label class="block font-mono text-[10px] text-white/50 uppercase tracking-wider mb-2">MICROFONE</label>
+              <label class="block font-mono text-[10px] text-white/50 uppercase tracking-wider mb-2">${this.t("settings.microphone")}</label>
               <select id="microphone-select" class="w-full bg-white/10 border-2 border-white/20 text-white font-mono text-sm p-3 focus:outline-none focus:border-[#CCFF00] cursor-pointer appearance-none select-arrow"></select>
             </div>
           </div>
@@ -416,7 +456,7 @@ class StreamPage {
               <!-- Error Message -->
               <div id="error-container" class="mb-4 bg-red-500/20 border-2 border-red-500/50 p-3 flex items-center gap-3" style="display: none;">
                 <span id="error-message" class="text-red-400 font-mono text-xs"></span>
-                <button id="retry-btn" class="font-mono text-[10px] text-white bg-white/20 px-2 py-1 hover:bg-white/30 transition-colors cursor-pointer">RETRY</button>
+                <button id="retry-btn" class="font-mono text-[10px] text-white bg-white/20 px-2 py-1 hover:bg-white/30 transition-colors cursor-pointer">${this.t("actions.retry")}</button>
               </div>
 
               <!-- Main Controls -->
@@ -434,7 +474,7 @@ class StreamPage {
                   <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
-                  <span>INICIAR STREAM</span>
+                  <span>${this.t("stream.start")}</span>
                 </button>
 
                 <!-- Camera Flip Button -->

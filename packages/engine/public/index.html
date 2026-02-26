@@ -1,11 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stream</title>
     <meta name="description" content="Configure sua câmera e microfone para iniciar a transmissão.">
+    <script>
+      (function () {
+        const supportedLocales = ["pt", "en", "es"];
+        const dictionary = {
+          pt: {
+            "app.title": "Stream",
+            "app.description": "Configure sua camera e microfone para iniciar a transmissao.",
+            "loading": "CARREGANDO...",
+            "permission.title": "ACESSO A CAMERA",
+            "permission.description": "Permita o acesso a camera e microfone para continuar",
+            "permission.allow": "PERMITIR",
+            "live.badge": "AO VIVO",
+            "settings.camera": "CAMERA",
+            "settings.microphone": "MICROFONE",
+            "actions.retry": "TENTAR NOVAMENTE",
+            "stream.start": "INICIAR STREAM",
+            "stream.stop": "PARAR",
+            "errors.permissionDenied": "Permissao negada",
+            "errors.cameraError": "Erro na camera",
+            "devices.camera": "Camera {index}",
+            "devices.microphone": "Microfone {index}"
+          },
+          en: {
+            "app.title": "Stream",
+            "app.description": "Set up your camera and microphone to start streaming.",
+            "loading": "LOADING...",
+            "permission.title": "CAMERA ACCESS",
+            "permission.description": "Allow camera and microphone access to continue",
+            "permission.allow": "ALLOW",
+            "live.badge": "LIVE",
+            "settings.camera": "CAMERA",
+            "settings.microphone": "MICROPHONE",
+            "actions.retry": "RETRY",
+            "stream.start": "START STREAM",
+            "stream.stop": "STOP",
+            "errors.permissionDenied": "Permission denied",
+            "errors.cameraError": "Camera error",
+            "devices.camera": "Camera {index}",
+            "devices.microphone": "Microphone {index}"
+          },
+          es: {
+            "app.title": "Stream",
+            "app.description": "Configura tu camara y microfono para iniciar la transmision.",
+            "loading": "CARGANDO...",
+            "permission.title": "ACCESO A LA CAMARA",
+            "permission.description": "Permite el acceso a la camara y al microfono para continuar",
+            "permission.allow": "PERMITIR",
+            "live.badge": "EN VIVO",
+            "settings.camera": "CAMARA",
+            "settings.microphone": "MICROFONO",
+            "actions.retry": "REINTENTAR",
+            "stream.start": "INICIAR STREAM",
+            "stream.stop": "DETENER",
+            "errors.permissionDenied": "Permiso denegado",
+            "errors.cameraError": "Error de camara",
+            "devices.camera": "Camara {index}",
+            "devices.microphone": "Microfono {index}"
+          }
+        };
+
+        const interpolate = (text, params) =>
+          text.replace(/\{(\w+)\}/g, (_, key) =>
+            Object.prototype.hasOwnProperty.call(params, key)
+              ? String(params[key])
+              : `{${key}}`
+          );
+
+        const detectLocale = () => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const queryLocale = (urlParams.get("lang") || "").toLowerCase().trim();
+          const normalizedQueryLocale = queryLocale.split("-")[0];
+
+          if (supportedLocales.includes(normalizedQueryLocale)) {
+            return normalizedQueryLocale;
+          }
+
+          const browserLanguages =
+            Array.isArray(navigator.languages) && navigator.languages.length > 0
+              ? navigator.languages
+              : [navigator.language || "pt"];
+
+          for (const language of browserLanguages) {
+            const normalized = String(language).toLowerCase().split("-")[0];
+            if (supportedLocales.includes(normalized)) {
+              return normalized;
+            }
+          }
+
+          return "pt";
+        };
+
+        const locale = detectLocale();
+
+        const t = (key, params = {}) => {
+          const template =
+            (dictionary[locale] && dictionary[locale][key]) ||
+            (dictionary.pt && dictionary.pt[key]) ||
+            key;
+          return interpolate(template, params);
+        };
+
+        window.i18n = { locale, dict: dictionary, t };
+
+        document.documentElement.lang = locale;
+        document.title = t("app.title");
+
+        const description = document.querySelector('meta[name="description"]');
+        if (description) {
+          description.setAttribute("content", t("app.description"));
+        }
+      })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="./public/js/flv.js"></script>
     <script type="module" src="./public/js/stream.js"></script>
