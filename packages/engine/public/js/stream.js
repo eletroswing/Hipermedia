@@ -33,31 +33,62 @@ const getStreamKeyFromQuery = () => {
 //start and stop recording
 document.addEventListener("DOMContentLoaded", async () => {
     const stremButton = document.getElementById("stream-btn");
-    const encoders = await Promise.all(Array.from({ length: 4 }).map(async () => {
-        const instance = await createFfmpegInstance()
-
-        return {
-            ffmpeg: instance,
-            running: false,
-            chunkIdx: 0,
-            id: crypto.randomUUID()
-        }
-    }))
+    if (!stremButton) return
 
     const globals = {
         streaming: false,
+        starting: false,
+        shouldStartWhenReady: false,
         ws: null,
         timestampOffset: 0,
         chunk: null,
-        encoders: encoders,
+        encoders: [],
+        encodersReady: false,
+        encodersReadyPromise: null,
         encoded: [],
         dispatching: false,
         pendingChunks: [],  // Fila de chunks aguardando encoder
     }
 
+    const initializeEncoders = async () => {
+        if (globals.encodersReady) return
+        if (globals.encodersReadyPromise) return globals.encodersReadyPromise
+
+        globals.encodersReadyPromise = Promise.all(
+            Array.from({ length: 4 }).map(async () => {
+                const instance = await createFfmpegInstance()
+
+                return {
+                    ffmpeg: instance,
+                    running: false,
+                    chunkIdx: 0,
+                    id: crypto.randomUUID()
+                }
+            })
+        )
+            .then((encoders) => {
+                globals.encoders = encoders
+                globals.encodersReady = true
+            })
+            .catch((err) => {
+                globals.encodersReady = false
+                globals.encodersReadyPromise = null
+                globals.shouldStartWhenReady = false
+                globals.streaming = false
+                console.error("Erro ao carregar encoders", err)
+            })
+
+        return globals.encodersReadyPromise
+    }
+
     const dispatchChunksRoutine = async () => {
         if (globals.dispatching) return
         globals.dispatching = true
+        if (!globals.encoded.length) {
+            globals.dispatching = false
+            return
+        }
+
         //lets take the chunk more probable to send
         const mostLikelyChunk = [...globals.encoded].sort((a, b) => a.order - b.order)[0].order
 
@@ -65,11 +96,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         const allLowerEncodingTasks = globals.encoders.filter((encoder) => encoder.running && encoder.chunkIdx < mostLikelyChunk)
 
         //if there still tasks, we need wait for then
-        if (allLowerEncodingTasks.length) return
+        if (allLowerEncodingTasks.length) {
+            globals.dispatching = false
+            return
+        }
 
         //there are no lower tasks, so we can remove the chunk that we are sending rn
         const currentChunk = [...globals.encoded].find((task) => task.order == mostLikelyChunk)
-        if (!currentChunk) return
+        if (!currentChunk) {
+            globals.dispatching = false
+            return
+        }
 
         //remove the chunk from encoded
         globals.encoded = globals.encoded.filter((task) => task.id != currentChunk.id)
@@ -180,6 +217,39 @@ document.addEventListener("DOMContentLoaded", async () => {
         processChunk(chunkData)
     }
 
+    const startStreaming = async () => {
+        if (globals.starting || globals.ws) return
+        if (!globals.encodersReady) return
+
+        globals.starting = true
+
+        try {
+            const streamKey = getStreamKeyFromQuery();
+            globals.ws = new WebSocket(`wss://api.stream.founderz.life/live/${encodeURIComponent(streamKey)}.flv`, "POST")
+            globals.ws.binaryType = "arraybuffer";
+            globals.chunk = {
+                order: 0,
+                file: null
+            }
+            globals.encoded = []
+            globals.pendingChunks = []
+            globals.dispatching = false
+
+            await new Promise((resolve, reject) => {
+                globals.ws.onopen = () => resolve(true)
+                globals.ws.onerror = (event) => reject(event)
+            })
+
+            globals.ws.send(getHeader())
+            performChunk()
+        } catch (err) {
+            console.error("Erro ao iniciar stream", err)
+            close()
+        } finally {
+            globals.starting = false
+        }
+    }
+
     const performChunk = async () => {
         globals.timestampOffset = 0;
         let order = 0;
@@ -231,34 +301,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     //ui actions
     stremButton.addEventListener("click", async () => {
         globals.streaming = window.streamPage.isStreaming
+
         if (globals.streaming) {
-            const streamKey = getStreamKeyFromQuery();
-            globals.ws = new WebSocket(`wss://api.stream.founderz.life/live/${encodeURIComponent(streamKey)}.flv`, "POST");//new WebSocket(`wss://api.stream.founderz.life/live/${encodeURIComponent(streamKey)}.flv`, "POST");//new WebSocket("ws://localhost:8000/live/test_av1.flv", "POST"); //
-            globals.ws.binaryType = "arraybuffer";
-            globals.chunk = {
-                order: 0,
-                file: null
+            if (!globals.encodersReady) {
+                globals.shouldStartWhenReady = true
+                await initializeEncoders()
+
+                if (globals.shouldStartWhenReady && globals.streaming) {
+                    globals.shouldStartWhenReady = false
+                    await startStreaming()
+                }
+                return
             }
-            globals.encoded = []
-            globals.pendingChunks = []
-            globals.dispatching = false
-            await new Promise((resolve) => {
-                globals.ws.onopen = () => {
-                    resolve(true)
-                };
-            })
 
-            globals.ws.send(getHeader())
-
-            performChunk()
+            globals.shouldStartWhenReady = false
+            await startStreaming()
             return
         }
 
+        globals.shouldStartWhenReady = false
         close()
     })
 
     const close = () => {
         globals.streaming = false  
+        globals.shouldStartWhenReady = false
 
         if (globals.ws) {
             globals.ws.close()
@@ -268,4 +335,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         globals.chunk = null
 
     }
+
+    initializeEncoders()
 })
